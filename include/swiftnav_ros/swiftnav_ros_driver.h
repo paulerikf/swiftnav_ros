@@ -58,6 +58,7 @@
 
 namespace swiftnav_ros
 {
+	void mag_callback(u16 sender_id, u8 len, u8 msg[], void *context);
 	void heartbeat_callback(u16 sender_id, u8 len, u8 msg[], void *context);
 	void time_callback(u16 sender_id, u8 len, u8 msg[], void *context);
 	void pos_llh_callback(u16 sender_id, u8 len, u8 msg[], void *context);
@@ -109,6 +110,7 @@ namespace swiftnav_ros
 		sbp_msg_callbacks_node_t baseline_ned_callback_node;
 //		sbp_msg_callbacks_node_t vel_ecef_callback_node;
 		sbp_msg_callbacks_node_t vel_ned_callback_node;
+		sbp_msg_callbacks_node_t mag_callback_node;
 
 		/*
 		 * Diagnostic updater
@@ -136,6 +138,7 @@ namespace swiftnav_ros
 		ros::Publisher llh_pub;
 		ros::Publisher rtk_pub;
 		ros::Publisher time_pub;
+		ros::Publisher mag_pub;
 
         // Diagnostic Data
 		unsigned int io_failure_count;
@@ -174,6 +177,7 @@ namespace swiftnav_ros
 		friend void pos_llh_callback(u16 sender_id, u8 len, u8 msg[], void *context);
 		friend void baseline_ned_callback(u16 sender_id, u8 len, u8 msg[], void *context);
 		friend void vel_ned_callback(u16 sender_id, u8 len, u8 msg[], void *context);
+		friend void mag_callback(u16 sender_id, u8 len, u8 msg[], void *context);
 	};
 }
 

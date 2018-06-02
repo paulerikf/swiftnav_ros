@@ -1,12 +1,14 @@
 #include "swiftnav_ros/swiftnav_ros_driver.h"
 #include <libsbp/system.h>
 #include <libsbp/navigation.h>
+#include <libsbp/mag.h>
 
 #include <iomanip>
 
 #include <sensor_msgs/NavSatFix.h>
 #include <sensor_msgs/NavSatStatus.h>
 #include <sensor_msgs/TimeReference.h>
+#include <sensor_msgs/MagneticField.h>
 #include <ros/time.h>
 #include <tf/tf.h>
 
@@ -112,10 +114,12 @@ namespace swiftnav_ros
         sbp_register_callback(&state, SBP_MSG_BASELINE_NED, &baseline_ned_callback, (void*) this, &baseline_ned_callback_node);
 //		sbp_register_callback(&state, SBP_VEL_ECEF, &vel_ecefCallback, (void*) this, &vel_ecef_callback_node);
 		sbp_register_callback(&state, SBP_MSG_VEL_NED, &vel_ned_callback, (void*) this, &vel_ned_callback_node);
+		sbp_register_callback(&state, SBP_MSG_MAG_RAW, &mag_callback, (void*) this, &mag_callback_node);
 
 		llh_pub = nh.advertise<sensor_msgs::NavSatFix>( "gps/fix", 1 );
 		rtk_pub = nh.advertise<nav_msgs::Odometry>( "gps/rtkfix", 1 );
 		time_pub = nh.advertise<sensor_msgs::TimeReference>( "gps/time", 1 );
+        mag_pub = nh.advertise<sensor_msgs::MagneticField>( "gps/mag", 1 );
 
 		return true;
 	}
@@ -322,7 +326,7 @@ namespace swiftnav_ros
 		return;
 	}
 	
-void vel_ned_callback(u16 sender_id, u8 len, u8 msg[], void *context)
+    void vel_ned_callback(u16 sender_id, u8 len, u8 msg[], void *context)
 	{
 		if ( context == NULL )
 		{
@@ -345,6 +349,30 @@ void vel_ned_callback(u16 sender_id, u8 len, u8 msg[], void *context)
 
 		return;
 	}
+
+    void mag_callback(u16 sender_id, u8 len, u8 msg[], void *context) {
+        if ( context == NULL )
+        {
+            std::cerr << "Critical Error: Pisk SBP driver mag context void." << std::endl;
+            return;
+        }
+
+        class PIKSI *driver = (class PIKSI*) context;
+        msg_mag_raw_t mag_sbp = *(msg_mag_raw_t*) msg;
+
+        sensor_msgs::MagneticFieldPtr mag_msg( new sensor_msgs::MagneticField );
+
+        mag_msg->header.frame_id = driver->frame_id;
+        mag_msg->header.stamp = ros::Time::now();
+
+        mag_msg->magnetic_field.x = mag_sbp.mag_x;
+        mag_msg->magnetic_field.y = mag_sbp.mag_y;
+        mag_msg->magnetic_field.z = mag_sbp.mag_z;
+
+        driver->mag_pub.publish(mag_msg);
+
+        return;
+    }
 
 	void PIKSI::spin( )
 	{

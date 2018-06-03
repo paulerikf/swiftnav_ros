@@ -2,6 +2,7 @@
 #include <libsbp/system.h>
 #include <libsbp/navigation.h>
 #include <libsbp/mag.h>
+#include <libsbp/imu.h>
 
 #include <iomanip>
 
@@ -9,6 +10,7 @@
 #include <sensor_msgs/NavSatStatus.h>
 #include <sensor_msgs/TimeReference.h>
 #include <sensor_msgs/MagneticField.h>
+#include <sensor_msgs/Imu.h>
 #include <ros/time.h>
 #include <tf/tf.h>
 
@@ -115,11 +117,13 @@ namespace swiftnav_ros
 //		sbp_register_callback(&state, SBP_VEL_ECEF, &vel_ecefCallback, (void*) this, &vel_ecef_callback_node);
         sbp_register_callback(&state, SBP_MSG_VEL_NED, &vel_ned_callback, (void*) this, &vel_ned_callback_node);
         sbp_register_callback(&state, SBP_MSG_MAG_RAW, &mag_callback, (void*) this, &mag_callback_node);
+        sbp_register_callback(&state, SBP_MSG_IMU_RAW, &imu_raw_callback, (void*) this, &imu_raw_callback_node);
 
         llh_pub = nh.advertise<sensor_msgs::NavSatFix>( "gps/fix", 1 );
         rtk_pub = nh.advertise<nav_msgs::Odometry>( "gps/rtkfix", 1 );
         time_pub = nh.advertise<sensor_msgs::TimeReference>( "gps/time", 1 );
         mag_pub = nh.advertise<sensor_msgs::MagneticField>( "gps/mag", 1 );
+        imu_raw_pub = nh.advertise<sensor_msgs::Imu>( "gps/imu", 1 );
 
         return true;
     }
@@ -364,6 +368,30 @@ namespace swiftnav_ros
         driver->mag_pub.publish(mag_msg);
     }
 
+    void imu_raw_callback(u16 sender_id, u8 len, u8 *msg, void *context) {
+        if ( context == NULL )
+        {
+            std::cerr << "Critical Error: Pisk SBP driver IMU context void." << std::endl;
+            return;
+        }
+
+        class PIKSI *driver = (class PIKSI*) context;
+        msg_imu_raw_t imu_raw_sbp = *(msg_imu_raw_t*) msg;
+
+        sensor_msgs::ImuPtr imu_raw_msg( new sensor_msgs::Imu );
+
+        imu_raw_msg->header.frame_id = driver->frame_id;
+        imu_raw_msg->header.stamp = ros::Time::now();
+
+        imu_raw_msg->angular_velocity.x = imu_raw_sbp.gyr_x;
+        imu_raw_msg->angular_velocity.y = imu_raw_sbp.gyr_y;
+        imu_raw_msg->angular_velocity.z = imu_raw_sbp.gyr_z;
+
+        imu_raw_msg->linear_acceleration.x = imu_raw_sbp.acc_x;
+        imu_raw_msg->linear_acceleration.y = imu_raw_sbp.acc_y;
+        imu_raw_msg->linear_acceleration.z = imu_raw_sbp.acc_z;
+
+        driver->imu_raw_pub.publish(imu_raw_msg);
     }
 
     void PIKSI::spin( )
